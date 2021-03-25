@@ -1,0 +1,7 @@
+env.py
+*.jpg
+.DS_Store
+.ipynb_checkpoints/
+__pycache__
+telco_df.csv
+zillow.csv
