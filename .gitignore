@@ -5,3 +5,5 @@ env.py
 __pycache__
 telco_df.csv
 zillow.csv
+wrangle.py
+sql_query.sql
