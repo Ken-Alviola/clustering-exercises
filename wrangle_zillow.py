@@ -72,7 +72,7 @@ def get_zillow_data(cached=False):
         
     return df
 
-def handle_missing_values(df, prop_required_row = 0.75, prop_required_col = 0.75):
+def handle_missing_values(df, prop_required_row = 0.70, prop_required_col = 0.5):
     ''' function which takes in a dataframe, required notnull proportions of non-null rows and columns.
     drop the columns and rows columns based on theshold:'''
     
@@ -170,7 +170,8 @@ def clean_zillow(df):
     
     #df = df.set_index('parcelid')  
     #subsetting single unit properties
-    df = df[(df.propertylandusetypeid.isin(['261','266','263','275','260'])) | (df.unitcnt == 1)]
+    df = df[(df.propertylandusetypeid.isin(['261','262','264','266','263','268','273','276','275','279','260'])) | (df.unitcnt == 1)]
+    df = df[(df.bedroomcnt > 0) & (df.bathroomcnt > 0) & ((df.unitcnt<=1)|df.unitcnt.isnull()) & (df.calculatedfinishedsquarefeet>350)]
     
     #dropping nulls
     df = handle_missing_values(df)
@@ -185,52 +186,37 @@ def clean_zillow(df):
     df = df[df.taxamount.notnull()]
     df = df[df.landtaxvaluedollarcnt.notnull()]
     
-    #imputing remaining nulls
-    imp_median = SimpleImputer(missing_values=np.nan, strategy='median')    
-    df1 = pd.DataFrame(imp_median.fit_transform(df[['yearbuilt',
-                                                            'calculatedbathnbr',
-                                                            'calculatedfinishedsquarefeet',
-                                                            'finishedsquarefeet12', 'fullbathcnt',
-                                                            'structuretaxvaluedollarcnt',
-                                                            'censustractandblock']]),
-                   columns=['yearbuilt_imputed',
-                            'calculatedbathnbr_imputed',
-                            'calculatedfinishedsquarefeet_imputed',
-                            'finishedsquarefeet12_imputed',
-                            'fullbathcnt_imputed', 'structuretaxvaluedollarcnt_imputed',
-                            'censustractandblock_imputed'],
-                   index=df.index)
+    df['county'] = np.where(df.fips == 6037, 'Los_Angeles',
+                           np.where(df.fips == 6059, 'Orange', 
+                                   'Ventura'))    
+    cols_to_remove = ['id',
+       'calculatedbathnbr', 'finishedsquarefeet12', 'fullbathcnt', 'heatingorsystemtypeid'
+       ,'propertycountylandusecode', 'propertylandusetypeid','propertyzoningdesc', 
+        'censustractandblock', 'propertylandusedesc']
     
-    df = pd.merge(df, df1, right_index=True, left_index=True).drop(columns=['yearbuilt',
-                                                                                    'calculatedbathnbr',
-                                                                                    'calculatedfinishedsquarefeet',
-                                                                                    'finishedsquarefeet12',
-                                                                                    'fullbathcnt',
-                                                                                    'structuretaxvaluedollarcnt',
-                                                                                    'censustractandblock'])
+    df = df.drop(columns=cols_to_remove)
     
+    df.heatingorsystemdesc.fillna('None', inplace = True)
+    df.unitcnt.fillna(1, inplace = True)
     
-    imp_mode = SimpleImputer(missing_values=np.nan, strategy='most_frequent')
-    df2 = pd.DataFrame(imp_mode.fit_transform(df[['regionidcity']]), columns = ['regionidcity_imputed'], index = df.index)
-    df = pd.merge(df, df2,right_index= True, left_index= True ).drop(columns = ['regionidcity'])
+    # replace nulls with median values for select columns
+    df.lotsizesquarefeet.fillna(7313, inplace = True)
+    df.buildingqualitytypeid.fillna(6.0, inplace = True)
     
-    X_numeric = df[['lotsizesquarefeet']]
-    imputer = KNNImputer(n_neighbors=1)
-    imputed = imputer.fit_transform(X_numeric)
-    imputed = pd.DataFrame(imputed, index=df.index)
-    df['lotsizesquarefeet'] = imputed[[0]]
+    # fill missing values for buildingqualitytypeid with median value
+    df.buildingqualitytypeid.fillna(6.0, inplace = True)
+    df = df.dropna()
     
-    #save for later just in case
-    ''' 
-    q1 = df.tax_value.quantile(.25)
-    q3 = df.tax_value.quantile(.75)
+    #outlier removal 1.5x IQR
+    q1 = df.taxvaluedollarcnt.quantile(.25)
+    q3 = df.taxvaluedollarcnt.quantile(.75)
     iqr = q3 - q1
     multiplier = 1.5
     upper_bound = q3 + (multiplier * iqr)
     lower_bound = q1 - (multiplier * iqr)
-    df = df[df.tax_value > lower_bound]
-    df = df[df.tax_value < upper_bound]
-    '''
+    df = df[df.taxvaluedollarcnt > lower_bound]
+    df = df[df.taxvaluedollarcnt < upper_bound]
+    
     return df
 
 def split_zillow(df, stratify_by=None):
@@ -261,6 +247,23 @@ def wrangle_zillow(split=False):
         return split_zillow(df)
     else:
         return df
+    
+def scale_data(train,validate,test):
+    '''Accepts train, validate, test data frames and applies standard scaler
+    return: train, validate, test scaled pandas dataframe'''
+    
+    scaler = sklearn.preprocessing.StandardScaler()
+    scaler.fit(train)
+    
+    train_scaled = scaler.transform(train)
+    validate_scaled = scaler.transform(validate)
+    test_scaled = scaler.transform(test)
+    
+    train_scaled = pd.DataFrame(train_scaled, columns=train.columns)
+    validate_scaled = pd.DataFrame(validate_scaled, columns=train.columns)
+    test_scaled = pd.DataFrame(test_scaled, columns=train.columns)
+    
+    return train_scaled, validate_scaled, test_scaled
     
 #functions below are for tabling nulls
 def missing_rows(df):
