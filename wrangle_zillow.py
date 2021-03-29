@@ -217,6 +217,8 @@ def clean_zillow(df):
     df = df[df.taxvaluedollarcnt > lower_bound]
     df = df[df.taxvaluedollarcnt < upper_bound]
     
+    df = df.rename(columns={"bedroomcnt": "bedrooms", "bathroomcnt": "bathrooms", "calculatedfinishedsquarefeet":    
+                                    "square_feet","taxamount": "taxes", "taxvaluedollarcnt": "tax_value"})
     return df
 
 def split_zillow(df, stratify_by=None):
