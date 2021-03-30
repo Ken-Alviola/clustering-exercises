@@ -166,7 +166,7 @@ def clean_zillow(df):
                   'storydesc',
                   'typeconstructiondesc']
     
-    df = df.drop(columns=['parcelid2','parcelid3','id2'])
+    df = df.drop(columns=['parcelid2','parcelid3','id2','trans_date'])
     
     #df = df.set_index('parcelid')  
     #subsetting single unit properties
@@ -219,6 +219,11 @@ def clean_zillow(df):
     
     df = df.rename(columns={"bedroomcnt": "bedrooms", "bathroomcnt": "bathrooms", "calculatedfinishedsquarefeet":    
                                     "square_feet","taxamount": "taxes", "taxvaluedollarcnt": "tax_value"})
+    
+    df['age_in_years'] = 2021 - df.yearbuilt
+    df['Bathrooms_cat'] = df.bathrooms.apply(lambda x: "4+" if x >= 4 else x)
+    df['Bedrooms_cat'] = df.bedrooms.apply(lambda x: "4+" if x >= 4 else x)
+    df['tax_rate'] = round(((df.taxes / df.tax_value) * 100), 2)
     return df
 
 def split_zillow(df, stratify_by=None):

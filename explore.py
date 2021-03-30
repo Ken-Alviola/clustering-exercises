@@ -51,7 +51,7 @@ def explore_univariate_categorical(train, cat_var):
     a frequency table and barplot of the frequencies. 
     '''
     frequency_table = freq_table(train, cat_var)
-    plt.figure(figsize=(2,2))
+    plt.figure(figsize=(4,4))
     sns.barplot(x=cat_var, y='Count', data=frequency_table, color='lightseagreen')
     plt.title(cat_var)
     plt.show()
@@ -141,7 +141,7 @@ def run_chi2(train, binary_var, categorical_target):
 
 
 def plot_cat_by_target(train, categorical_target, binary_var):
-    p = plt.figure(figsize=(2,2))
+    p = plt.figure(figsize=(4,4))
     p = sns.barplot(categorical_target, binary_var, data=train, alpha=.8, color='lightseagreen')
     overall_rate = train[binary_var].mean()
     p = plt.axhline(overall_rate, ls='--', color='gray')
